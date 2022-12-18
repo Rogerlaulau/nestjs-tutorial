@@ -1,49 +1,41 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, BadRequestException} from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { InjectModel } from '@hirasawa_au/nestjs-typegoose';
+import { Ref, ReturnModelType } from '@typegoose/typegoose';
+import { User } from './entities/user.entity';
 
 @Injectable()
 export class UsersService {
-    private users = [{id: 0, name: "Roger"}];
+  constructor(
+    @InjectModel(User)
+    private readonly userModel: ReturnModelType<typeof User>,
+  ) { }
 
-    findAll() {
-        return this.users;
+    async findAll() {
+        return await this.userModel.find();
     }
 
-    findById(id: number){
-        return this.users.find(user => user.id === id);
+    async findOne(id: string){
+        return await this.userModel.findOne({ _id: id })
     }
 
-    createUser(createUserDto: CreateUserDto){
-        // const newUser = {id: Date.now(), name: createUserDto.name};
-        const newUser = { id: Date.now(), ...createUserDto };
-        this.users.push(newUser);
-        return newUser;
-    }
-
-    updateUser(id: number, updateUserDto: UpdateUserDto){
-        const indexOfObject = this.users.findIndex((object) => {
-            return object.id === id;
-          });
-          if (indexOfObject !== -1) {
-            this.users[indexOfObject].name = updateUserDto.name;
-            return this.users[indexOfObject];
-          } else{
-            return;
-          }
-    }
-
-    deleteUser(id: number) {
-        let removedUser;
-    
-        const indexOfObject = this.users.findIndex((object) => {
-          return object.id === id;
+    async createUser(createUserDto: CreateUserDto){
+      try {
+        return await this.userModel.create(createUserDto);
+      } catch (e) {
+        console.error('API Fail:', e);
+        throw new InternalServerErrorException({
+          Error: 'Internal Server Error',
         });
-        
-        if (indexOfObject !== -1) {
-          removedUser = this.users.splice(indexOfObject, 1); // argument 1 indicates removing 1 object only
-        }
-        return removedUser;
       }
+    }
 
+    async updateUser(id: string, updateUserDto: UpdateUserDto){
+      return await this.userModel.findByIdAndUpdate(id, updateUserDto, { new: true });
+    }
+
+    async deleteUser(id: string) {
+      return await this.userModel.deleteOne({_id: id});
+    }
 }
